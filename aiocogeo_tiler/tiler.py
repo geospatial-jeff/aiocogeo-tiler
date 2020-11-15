@@ -7,8 +7,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import morecantile
 import numpy as np
 from aiocogeo.cog import COGReader
-from aiocogeo.errors import InvalidTiffError
-from aiocogeo.filesystems import Filesystem
 from morecantile import TileMatrixSet
 from PIL import Image
 from rasterio.crs import CRS
@@ -70,7 +68,7 @@ class TileResponse:
         """create from numpy array"""
         if isinstance(array, np.ma.masked_array):
             return cls(array.data, array.mask)
-        return cls(array.data)
+        return cls(array)
 
 
 @dataclass
@@ -79,29 +77,13 @@ class COGTiler(COGReader, AsyncBaseReader):
 
     tms: TileMatrixSet = field(default=DEFAULT_TMS)
 
-    async def __aenter__(self):
-        """Open the image and read the header"""
-        async with Filesystem.create_from_filepath(
-            self.filepath, **self.kwargs
-        ) as file_reader:
-            self._file_reader = file_reader
-            if (await file_reader.read(2)) == b"MM":
-                file_reader._endian = ">"
-            version = await file_reader.read(2, cast_to_int=True)
-            if version == 42:
-                first_ifd = await file_reader.read(4, cast_to_int=True)
-                file_reader.seek(first_ifd)
-                await self._read_header()
-            elif version == 43:
-                raise NotImplementedError("BigTiff is not yet supported")
-            else:
-                raise InvalidTiffError("Not a valid TIFF")
-
-            self.bounds = transform_bounds(
-                CRS.from_epsg(self.epsg), CRS.from_epsg(4326), *self.native_bounds
-            )
-            self.minzoom, self.maxzoom = self.get_zooms()
-
+    async def open(self):
+        """override default open method"""
+        await self._open()
+        self.bounds = transform_bounds(
+            CRS.from_epsg(self.epsg), CRS.from_epsg(4326), *self.native_bounds
+        )
+        self.minzoom, self.maxzoom = self.get_zooms()
         return self
 
     def get_zooms(self, tilesize: int = 256) -> Tuple[int, int]:
@@ -247,7 +229,7 @@ class COGTiler(COGReader, AsyncBaseReader):
             indexes = (indexes,)
 
         tile = morecantile.Tile(x=tile_x, y=tile_y, z=tile_z)
-        tile_bounds = self.tms.xy_bounds(*tile)
+        tile_bounds = self.tms.xy_bounds(tile)
 
         # resampling_method -> resample_method
         resample_method = RESAMPLING[resampling_method]
