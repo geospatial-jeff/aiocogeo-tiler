@@ -42,7 +42,7 @@ setup(
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
     install_requires=[
-        "aiocogeo",
+        "aiocogeo==0.2.*",
         "morecantile",
         "rasterio>=1.1.7",
         "rio-tiler==2.0.0b19",
