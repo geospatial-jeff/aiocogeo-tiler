@@ -57,8 +57,7 @@ class TileResponse(ImageData):
         """create from numpy array"""
         if isinstance(array, np.ma.masked_array):
             return cls(data=array.data, mask=(array.mask * 255).astype("uint8"))
-        mask = np.zeros((array.shape[0], array.shape[1]), dtype="uint8") + 255
-        return cls(data=array, mask=mask)
+        return cls(data=array)
 
 
 @dataclass
