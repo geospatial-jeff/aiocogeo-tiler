@@ -17,6 +17,7 @@ from rasterio.warp import calculate_default_transform, reproject
 from rasterio.warp import transform as transform_coords
 from rasterio.warp import transform_bounds
 from rio_tiler.io import AsyncBaseReader
+from rio_tiler.models import ImageData, ImageStatistics, Info
 from rio_tiler.utils import _stats as raster_stats
 
 # Rasterio <-> PIL resampling modes
@@ -48,27 +49,16 @@ class COGInfo:
     colormap: Optional[Dict[int, Sequence[int]]] = None
 
 
-@dataclass
-class TileResponse:
+class TileResponse(ImageData):
     """tile response"""
-
-    arr: np.ndarray
-    mask: Optional[np.ma.masked_array] = None
-
-    def __iter__(self):
-        """
-        Allow for variable expansion (``arr, mask = TileResponse``)
-
-        """
-        for i in (self.arr, self.mask * 255):
-            yield i
 
     @classmethod
     def from_array(cls, array: Union[np.ndarray, np.ma.masked_array]) -> "TileResponse":
         """create from numpy array"""
         if isinstance(array, np.ma.masked_array):
-            return cls(array.data, array.mask)
-        return cls(array)
+            return cls(data=array.data, mask=(array.mask * 255).astype("uint8"))
+        mask = np.zeros((array.shape[0], array.shape[1]), dtype="uint8") + 255
+        return cls(data=array, mask=mask)
 
 
 @dataclass
@@ -129,7 +119,7 @@ class COGTiler(COGReader, AsyncBaseReader):
         )
         return arr.astype(self.profile["dtype"])
 
-    async def info(self) -> Dict:
+    async def info(self) -> Info:
         """info"""
         if self.has_alpha:
             nodata_type = "Alpha"
@@ -144,7 +134,7 @@ class COGTiler(COGReader, AsyncBaseReader):
         band_descr = [(ix, f"band{ix}") for ix in self.indexes]
         band_meta = [(ix, {}) for ix in self.indexes]  # type:ignore
 
-        return dict(
+        return Info(
             bounds=self.bounds,
             center=self.center,
             minzoom=self.minzoom,
@@ -152,8 +142,8 @@ class COGTiler(COGReader, AsyncBaseReader):
             band_metadata=band_meta,
             band_descriptions=band_descr,
             dtype=self.profile["dtype"],
-            colorinterp=[color.name for color in self.color_interp],
             nodata_type=nodata_type,
+            colorinterp=[color.name for color in self.color_interp],
             colormap=self.colormap,
         )
 
@@ -169,7 +159,7 @@ class COGTiler(COGReader, AsyncBaseReader):
         bounds: Optional[Tuple[float, float, float, float]] = None,
         bounds_crs: CRS = CRS.from_epsg(4326),
         resampling_method: str = "nearest",
-    ) -> Dict:
+    ) -> Dict[str, ImageStatistics]:
         """stats"""
 
         hist_options = hist_options or {}
@@ -206,10 +196,12 @@ class COGTiler(COGReader, AsyncBaseReader):
                 resampling_method=resampling_method,
             )
 
-        data = np.ma.array(resp.arr)
+        data = np.ma.array(resp.data)
 
         return {
-            indexes[b]: raster_stats(data[b], percentiles=(pmin, pmax), **hist_options)
+            str(indexes[b]): ImageStatistics.parse_obj(
+                raster_stats(data[b], percentiles=(pmin, pmax), **hist_options)
+            )
             for b in range(data.shape[0])
         }
 

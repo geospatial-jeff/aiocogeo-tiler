@@ -22,4 +22,4 @@ jobs:
         python-version: 3.8
     - name: Run tests
       run: |
-        pip install . && python setup.py pytest
+        pip install numpy && pip install . && python setup.py pytest

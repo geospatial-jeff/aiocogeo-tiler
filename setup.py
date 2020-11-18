@@ -45,7 +45,7 @@ setup(
         "aiocogeo==0.2.*",
         "morecantile",
         "rasterio>=1.1.7",
-        "rio-tiler==2.0.0b19",
+        "rio-tiler==2.0.0rc1.post1",
     ],
     test_suite="tests",
     setup_requires=["pytest-runner"],

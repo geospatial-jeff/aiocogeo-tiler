@@ -21,8 +21,8 @@ async def test_cog_tiler_tile():
             resampling_method="bilinear"
         )
 
-        assert tile.arr.shape == (3, 256, 256)
-        assert tile.arr.dtype == cog.profile["dtype"]
+        assert tile.data.shape == (3, 256, 256)
+        assert tile.data.dtype == cog.profile["dtype"]
 
 
 @pytest.mark.asyncio
@@ -40,7 +40,7 @@ async def test_cog_tiler_part():
             bbox=(-10526706.9, 4445561.5, -10526084.1, 4446144.0),
             bbox_crs=CRS.from_epsg(cog.epsg),
         )
-        assert tile.arr.shape == (3, 976, 1043)
+        assert tile.data.shape == (3, 976, 1043)
         assert tile.mask is not None
 
 
@@ -54,28 +54,28 @@ async def test_cog_tiler_part_dimensions():
             height=500,
         )
 
-        assert tile.arr.shape == (3, 500, 500)
+        assert tile.data.shape == (3, 500, 500)
 
 
 @pytest.mark.asyncio
 async def test_cog_tiler_preview():
     async with COGTiler(INFILE) as cog:
         tile = await cog.preview()
-        assert tile.arr.shape == (3, 1024, 864)
+        assert tile.data.shape == (3, 1024, 864)
 
 
 @pytest.mark.asyncio
 async def test_cog_tiler_preview_max_size():
     async with COGTiler(INFILE) as cog:
         tile = await cog.preview(max_size=412)
-        assert tile.arr.shape == (3, 412, 348)
+        assert tile.data.shape == (3, 412, 348)
 
 
 @pytest.mark.asyncio
 async def test_cog_tiler_preview_dimensions():
     async with COGTiler(INFILE) as cog:
         tile = await cog.preview(width=512, height=512)
-        assert tile.arr.shape == (3, 512, 512)
+        assert tile.data.shape == (3, 512, 512)
 
 
 @pytest.mark.asyncio
@@ -91,6 +91,6 @@ async def test_cog_tiler_info():
 async def test_cog_tiler_stats():
     async with COGTiler(INFILE) as cog:
         stats = await cog.stats()
-        assert stats[0]["pc"] == [25, 208]
-        assert stats[1]["pc"] == [37, 214]
-        assert stats[2]["pc"] == [48, 214]
+        assert stats["0"].percentiles == [25, 208]
+        assert stats["1"].percentiles == [37, 214]
+        assert stats["2"].percentiles == [48, 214]
