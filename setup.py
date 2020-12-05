@@ -21,7 +21,7 @@ setup(
     description="Asynchronous cogeotiff tiler",
     long_description=desc,
     long_description_content_type="text/markdown",
-    version="0.1.0",
+    version="0.1.1",
     author=u"Jeff Albrecht",
     author_email="geospatialjeff@gmail.com",
     url="https://github.com/geospatial-jeff/aiocogeo-tiler",
